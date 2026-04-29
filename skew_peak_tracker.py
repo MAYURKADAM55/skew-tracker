@@ -179,13 +179,34 @@ def run():
         "Renew token on Dhan before expiry!"
     )
 
-    peak_pnl        = 0.0
-    alert_sent      = False
-    eod_sent        = False
-    token_warn_sent = False
-    last_trade_day  = None
+    peak_pnl         = 0.0
+    alert_sent       = False
+    eod_sent         = False
+    token_warn_sent  = False
+    daily_reminder_sent = False
+    last_trade_day   = None
 
     while True:
+        now = now_ist()
+
+        # ── Daily 5 PM token renewal reminder ───────────────────────────────
+        if now.hour == 17 and now.minute == 0 and not daily_reminder_sent:
+            send_telegram(
+                "DAILY REMINDER - 5 PM\n"
+                "Renew your Dhan token tonight on laptop!\n\n"
+                "Steps (2 min):\n"
+                "1. web.dhan.co -> Profile -> DhanHQ Trading APIs\n"
+                "2. Generate Access Token -> enter PIN -> Copy\n"
+                "3. Railway -> Variables -> update ACCESS_TOKEN -> Deploy\n\n"
+                "Do it before sleeping so tracker works tomorrow 9:20 AM"
+            )
+            daily_reminder_sent = True
+            log.info("Daily 5 PM token renewal reminder sent.")
+
+        # Reset daily reminder flag after 5:01 PM
+        if now.hour == 17 and now.minute >= 1:
+            daily_reminder_sent = False
+
         # ── Token expiry warning (2 hrs before) ─────────────────────────────
         hrs_left = hours_until_expiry()
         if 0 < hrs_left < 2 and not token_warn_sent:
