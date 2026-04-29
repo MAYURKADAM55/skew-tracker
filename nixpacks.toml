@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["chromium", "nss", "nspr", "at-spi2-atk", "libdrm", "libxkbcommon"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt", "playwright install chromium"]
+
+[start]
+cmd = "python skew_peak_tracker.py"
