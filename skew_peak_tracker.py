@@ -26,7 +26,10 @@ import requests
 CLIENT_ID    = os.environ["CLIENT_ID"]
 TELEGRAM_BOT = os.environ["TELEGRAM_BOT"]
 TELEGRAM_ID  = os.environ["TELEGRAM_ID"]
-ACCESS_TOKEN = os.environ["ACCESS_TOKEN"]
+
+# Token is mutable — can be updated via Telegram /token command without redeploy
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")
+_last_update_id = 0   # Telegram message offset
 
 TRAIL_PCT     = 30    # alert when P&L drops this % from peak
 ATM_RANGE_PTS = 300   # strikes within +-300 pts of spot = SkewHunter
@@ -43,12 +46,53 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
+# ── TELEGRAM TOKEN UPDATE VIA /token COMMAND ─────────────────────────────────
+
+def check_telegram_for_new_token() -> None:
+    """Poll Telegram for /token <jwt> messages from the authorized user."""
+    global ACCESS_TOKEN, _last_update_id
+    try:
+        r = requests.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT}/getUpdates",
+            params={"offset": _last_update_id + 1, "timeout": 0},
+            timeout=10,
+        )
+        updates = r.json().get("result", [])
+        for upd in updates:
+            _last_update_id = upd["update_id"]
+            msg = upd.get("message", {})
+            chat_id = str(msg.get("chat", {}).get("id", ""))
+            text = msg.get("text", "").strip()
+            # Only accept commands from the authorized chat
+            if chat_id != str(TELEGRAM_ID):
+                continue
+            if text.lower().startswith("/token "):
+                new_token = text[7:].strip()
+                if len(new_token) > 20:
+                    ACCESS_TOKEN = new_token
+                    exp = get_token_expiry()
+                    exp_str = (
+                        datetime.fromtimestamp(exp, IST).strftime("%d %b %Y %I:%M %p IST")
+                        if exp else "Unknown"
+                    )
+                    send_telegram(
+                        "Token updated successfully!\n"
+                        f"Expires : {exp_str}\n"
+                        "Tracker is running with new token."
+                    )
+                    log.info("Token updated via Telegram. Expires: %s", exp_str)
+                else:
+                    send_telegram("Invalid token. Send: /token eyJ...")
+    except Exception as e:
+        log.error("check_telegram_for_new_token failed: %s", e)
+
+
 # ── TOKEN EXPIRY CHECK ────────────────────────────────────────────────────────
 
 def get_token_expiry() -> int:
     """Parse JWT and return the exp Unix timestamp (0 if unparseable)."""
     try:
-        payload_b64 = ACCESS_TOKEN.split(".")[1]
+        payload_b64 = ACCESS_TOKEN.split(".")[1]  # uses current global ACCESS_TOKEN
         padding = 4 - len(payload_b64) % 4
         if padding != 4:
             payload_b64 += "=" * padding
@@ -188,6 +232,9 @@ def run():
 
     while True:
         now = now_ist()
+
+        # ── Check Telegram for /token command (every loop) ───────────────────
+        check_telegram_for_new_token()
 
         # ── Daily 5 PM token renewal reminder ───────────────────────────────
         if now.hour == 17 and now.minute == 0 and not daily_reminder_sent:
