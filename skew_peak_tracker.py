@@ -150,13 +150,17 @@ def get_nifty_spot() -> float:
 
 def send_telegram(msg: str) -> None:
     try:
-        requests.post(
+        r = requests.post(
             f"https://api.telegram.org/bot{TELEGRAM_BOT}/sendMessage",
             data={"chat_id": TELEGRAM_ID, "text": msg},
             timeout=10,
         )
+        if r.status_code == 200:
+            log.info("Telegram OK: message sent.")
+        else:
+            log.error("Telegram ERROR %d: %s", r.status_code, r.text[:300])
     except Exception as e:
-        log.error("Telegram failed: %s", e)
+        log.error("Telegram EXCEPTION: %s", e)
 
 
 # ── POSITION CLASSIFICATION ───────────────────────────────────────────────────
