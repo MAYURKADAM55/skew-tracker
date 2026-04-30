@@ -323,18 +323,13 @@ def run():
                      skew_pnl, peak_pnl, decline_pct)
 
             if decline_pct >= TRAIL_PCT and not alert_sent:
-                alert_msg = (
+                send_telegram(
                     f"SKEW TRAIL ALERT\n"
                     f"Peak   : Rs {peak_pnl:,.0f}\n"
                     f"Now    : Rs {skew_pnl:,.0f}\n"
                     f"Drop   : {decline_pct:.1f}%\n"
                     f"Action : Exit SkewHunter manually on Dhan."
                 )
-                # Send 3 times so you cannot miss it
-                for i in range(3):
-                    send_telegram(alert_msg)
-                    if i < 2:
-                        time.sleep(5)
                 alert_sent = True
                 log.warning("Trail alert sent.")
         else:
