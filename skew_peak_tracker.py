@@ -34,7 +34,7 @@ _last_update_id = 0   # Telegram message offset
 TRAIL_PCT     = 30    # alert when P&L drops this % from peak
 ATM_RANGE_PTS = 300   # strikes within +-300 pts of spot = SkewHunter
 MIN_PEAK_INR  = 500   # ignore trail logic until peak crosses this
-CHECK_EVERY   = 60    # seconds between polls
+CHECK_EVERY   = 15    # seconds between polls (15s catches peaks 60s would miss)
 IST           = ZoneInfo("Asia/Kolkata")
 # ─────────────────────────────────────────────────────────────────────────────
 
