@@ -312,6 +312,13 @@ def run():
 
         skew_pnl = calc_skew_pnl(positions, spot)
 
+        # If alert already fired and P&L back to zero/negative = user exited.
+        # Reset so next SkewHunter trade gets tracked fresh.
+        if alert_sent and skew_pnl <= 0:
+            log.info("Position reset detected (P&L %.0f). Ready for next trade.", skew_pnl)
+            peak_pnl   = 0.0
+            alert_sent = False
+
         if skew_pnl > peak_pnl:
             peak_pnl   = skew_pnl
             alert_sent = False
